@@ -13,7 +13,7 @@ import yt_dlp
 # ============================================================
 #   SURUM & GUNCELLEME AYARLARI
 # ============================================================
-SURUM = "1.0"
+SURUM = "1.1"
 
 # --- BURAYI KENDI GITHUB BILGILERINLE DOLDUR ---
 GH_KULLANICI = "MuammerGrG"           # github kullanici adin
@@ -27,9 +27,112 @@ def _ham_url(dosya):
 
 
 # ============================================================
-#   AYAR KAYDETME (tema, sarki sayisi)
+#   AYAR KAYDETME (tema, sarki sayisi, dil)
 # ============================================================
-VARSAYILAN_AYAR = {"tema": "dark", "sarki_sayisi": 100}
+VARSAYILAN_AYAR = {"tema": "dark", "sarki_sayisi": 100, "dil": "tr"}
+
+
+# ============================================================
+#   DIL / CEVIRI
+# ============================================================
+METIN = {
+    "tr": {
+        "altbaslik": "Orijinal, MP3 320 kbps",
+        "mod": "Mod:",
+        "mod_sanatci": "Sanatçının en iyileri ({n})",
+        "mod_parca": "Tek parça (şarkı adı)",
+        "ipucu_genel": "Örn: Tarkan   veya   Tarkan Kuzu Kuzu",
+        "ipucu_sanatci": "Örn: Tarkan   (en iyi {n} orijinal iner)",
+        "ipucu_parca": "Örn: Tarkan Kuzu Kuzu   (tek şarkı)",
+        "siraya_ekle": "＋ Sıraya Ekle",
+        "indirme_sirasi": "İndirme Sırası",
+        "temizle": "Temizle",
+        "baslat": "▼  İNDİRMEYİ BAŞLAT",
+        "indiriliyor": "İNDİRİLİYOR...",
+        "durum": "Durum",
+        "etiket_sanatci": "🎤 Sanatçı",
+        "etiket_parca": "🎵 Parça",
+        "ffmpeg_yok": "⚠ ffmpeg.exe bulunamadı — MP3 dönüşümü çalışmayabilir.",
+        "once_ekle": "Önce sıraya en az bir şey ekle.",
+        "hepsi_bitti": "\n✅ HEPSİ BİTTİ!\n📁 Konum: {yol}",
+        "bildirim": "🔔  Güncelleme mevcut: v{v}  —  yüklemek için tıkla",
+        # arama/log
+        "log_sanatci": "\n♪ {ad} — en iyi {n} orijinal şarkı",
+        "log_tamam": "   {n} şarkı tamamlandı.",
+        "log_parca": "\n♪ '{q}' aranıyor (orijinal, en çok dinlenen)",
+        "log_indirildi": "   ✓ indirildi: {ad}",
+        "log_hata": "   ! hata: {e}",
+        "arama_sanatci_ek": "şarkıları",
+        # ayarlar
+        "ayarlar": "⚙  Ayarlar",
+        "yuklu_surum": "Yüklü sürüm:  v{v}",
+        "yeni_var": "🔔 Yeni sürüm var: v{v}",
+        "guncel_kullaniyorsun": "En güncel sürümü kullanıyorsun ✓",
+        "indir_kur": "⬇  İndir ve Kur",
+        "cekiliyor": "Güncelleme çekiliyor, bekle...",
+        "indirildi_yeniden": "✓ İndirildi — yeniden başlat",
+        "tekrar_dene": "Tekrar dene",
+        "denetle": "Güncellemeleri Denetle",
+        "kontrol_ediliyor": "Kontrol ediliyor...",
+        "tema_lbl": "Tema:",
+        "tema_koyu": "Koyu", "tema_acik": "Açık", "tema_sistem": "Sistem",
+        "sarki_lbl": "Sanatçı başına şarkı:",
+        "sarki_aralik": "10 – 200 arası",
+        "dil_lbl": "Dil / Language:",
+        "konum_lbl": "İndirme konumu:",
+        "klasoru_ac": "📁 Klasörü Aç",
+    },
+    "en": {
+        "altbaslik": "Originals only, MP3 320 kbps",
+        "mod": "Mode:",
+        "mod_sanatci": "Artist's top tracks ({n})",
+        "mod_parca": "Single track (song name)",
+        "ipucu_genel": "e.g. Tarkan   or   Tarkan Kuzu Kuzu",
+        "ipucu_sanatci": "e.g. Tarkan   (downloads top {n} originals)",
+        "ipucu_parca": "e.g. Tarkan Kuzu Kuzu   (single song)",
+        "siraya_ekle": "＋ Add to Queue",
+        "indirme_sirasi": "Download Queue",
+        "temizle": "Clear",
+        "baslat": "▼  START DOWNLOAD",
+        "indiriliyor": "DOWNLOADING...",
+        "durum": "Status",
+        "etiket_sanatci": "🎤 Artist",
+        "etiket_parca": "🎵 Track",
+        "ffmpeg_yok": "⚠ ffmpeg.exe not found — MP3 conversion may not work.",
+        "once_ekle": "Add at least one item to the queue first.",
+        "hepsi_bitti": "\n✅ ALL DONE!\n📁 Location: {yol}",
+        "bildirim": "🔔  Update available: v{v}  —  click to install",
+        "log_sanatci": "\n♪ {ad} — top {n} original tracks",
+        "log_tamam": "   {n} tracks completed.",
+        "log_parca": "\n♪ Searching '{q}' (original, most played)",
+        "log_indirildi": "   ✓ downloaded: {ad}",
+        "log_hata": "   ! error: {e}",
+        "arama_sanatci_ek": "songs",
+        "ayarlar": "⚙  Settings",
+        "yuklu_surum": "Installed version:  v{v}",
+        "yeni_var": "🔔 New version available: v{v}",
+        "guncel_kullaniyorsun": "You're on the latest version ✓",
+        "indir_kur": "⬇  Download & Install",
+        "cekiliyor": "Fetching update, please wait...",
+        "indirildi_yeniden": "✓ Downloaded — restart the app",
+        "tekrar_dene": "Try again",
+        "denetle": "Check for Updates",
+        "kontrol_ediliyor": "Checking...",
+        "tema_lbl": "Theme:",
+        "tema_koyu": "Dark", "tema_acik": "Light", "tema_sistem": "System",
+        "sarki_lbl": "Songs per artist:",
+        "sarki_aralik": "between 10 – 200",
+        "dil_lbl": "Language / Dil:",
+        "konum_lbl": "Download location:",
+        "klasoru_ac": "📁 Open Folder",
+    },
+}
+
+_AKTIF_DIL = "tr"
+
+def T(anahtar, **kw):
+    s = METIN.get(_AKTIF_DIL, METIN["tr"]).get(anahtar, anahtar)
+    return s.format(**kw) if kw else s
 
 
 def _ayar_yolu():
@@ -288,10 +391,10 @@ class Indirici:
 
     def _hook(self, d):
         if self.iptal:
-            raise Exception("Kullanici iptal etti")
+            raise Exception("iptal")
         if d['status'] == 'finished':
             ad = os.path.basename(d.get('filename', ''))
-            self.log(f"   ✓ indirildi: {ad}")
+            self.log(T("log_indirildi", ad=ad))
 
     def sanatci_indir(self, sanatci, adet=100):
         sanatci = sanatci.strip()
@@ -301,16 +404,16 @@ class Indirici:
         hedef = os.path.join(music_kok, sanatci)
         os.makedirs(hedef, exist_ok=True)
         gorulen = set()
-        self.log(f"\n♪ {sanatci.upper()} — en iyi {adet} orijinal sarki")
-        arama = f"ytsearch{adet * 2}:{sanatci} sarkilari"
+        self.log(T("log_sanatci", ad=sanatci.upper(), n=adet))
+        arama = f"ytsearch{adet * 2}:{sanatci} {T('arama_sanatci_ek')}"
         opts = self._ydl_opts(hedef, gorulen, adet)
         try:
             with yt_dlp.YoutubeDL(opts) as ydl:
                 ydl.download([arama])
         except yt_dlp.utils.MaxDownloadsReached:
-            self.log(f"   {adet} sarki tamamlandi.")
+            self.log(T("log_tamam", n=adet))
         except Exception as e:
-            self.log(f"   ! hata: {e}")
+            self.log(T("log_hata", e=e))
         klasoru_temizle(hedef, self.log)
 
     def parca_indir(self, sorgu):
@@ -321,7 +424,7 @@ class Indirici:
         hedef = os.path.join(music_kok, "Parcalar")
         os.makedirs(hedef, exist_ok=True)
         gorulen = set()
-        self.log(f"\n♪ '{sorgu}' araniyor (orijinal, en cok dinlenen)")
+        self.log(T("log_parca", q=sorgu))
         # 5 aday tara, filtreden gecen ILK 1 orijinali indir
         arama = f"ytsearch5:{sorgu}"
         opts = self._ydl_opts(hedef, gorulen, 1)
@@ -331,7 +434,7 @@ class Indirici:
         except yt_dlp.utils.MaxDownloadsReached:
             pass
         except Exception as e:
-            self.log(f"   ! hata: {e}")
+            self.log(T("log_hata", e=e))
         klasoru_temizle(hedef, self.log)
 
 
@@ -348,6 +451,8 @@ class Uygulama(ctk.CTk):
         # Kayitli ayarlari yukle ve uygula
         self.ayar = ayar_yukle()
         ctk.set_appearance_mode(self.ayar.get("tema", "dark"))
+        global _AKTIF_DIL
+        _AKTIF_DIL = self.ayar.get("dil", "tr")
 
         self.title("Müzik İndirici")
         self.geometry("640x680")
@@ -386,7 +491,7 @@ class Uygulama(ctk.CTk):
         sol.pack(side="left", fill="x", expand=True)
         ctk.CTkLabel(sol, text="🎼  Müzik İndirici",
                      font=ctk.CTkFont(size=26, weight="bold")).pack(anchor="w")
-        ctk.CTkLabel(sol, text=f"Orijinal, MP3 320 kbps   ·   v{SURUM}",
+        ctk.CTkLabel(sol, text=f"{T('altbaslik')}   ·   v{SURUM}",
                      font=ctk.CTkFont(size=12), text_color="gray").pack(anchor="w")
         ctk.CTkButton(ust, text="⚙", width=40, height=40,
                       font=ctk.CTkFont(size=18),
@@ -397,14 +502,14 @@ class Uygulama(ctk.CTk):
         self.mod = ctk.StringVar(value="sanatci")
         mod_cerceve = ctk.CTkFrame(self)
         mod_cerceve.pack(fill="x", padx=20, pady=10)
-        ctk.CTkLabel(mod_cerceve, text="Mod:",
+        ctk.CTkLabel(mod_cerceve, text=T("mod"),
                      font=ctk.CTkFont(size=13, weight="bold")).pack(side="left", padx=(12, 8), pady=10)
         self.sanatci_radio = ctk.CTkRadioButton(
-            mod_cerceve, text=f"Sanatçının en iyileri ({self.ayar.get('sarki_sayisi', 100)})",
+            mod_cerceve, text=T("mod_sanatci", n=self.ayar.get('sarki_sayisi', 100)),
             variable=self.mod, value="sanatci",
             command=self._mod_degisti)
         self.sanatci_radio.pack(side="left", padx=8, pady=10)
-        ctk.CTkRadioButton(mod_cerceve, text="Tek parça (şarkı adı)",
+        ctk.CTkRadioButton(mod_cerceve, text=T("mod_parca"),
                            variable=self.mod, value="parca",
                            command=self._mod_degisti).pack(side="left", padx=8, pady=10)
 
@@ -412,19 +517,19 @@ class Uygulama(ctk.CTk):
         giris_cerceve = ctk.CTkFrame(self, fg_color="transparent")
         giris_cerceve.pack(fill="x", padx=20, pady=(0, 6))
         self.giris = ctk.CTkEntry(giris_cerceve,
-                                  placeholder_text="Örn: Tarkan   veya   Tarkan Kuzu Kuzu",
+                                  placeholder_text=T("ipucu_genel"),
                                   height=40, font=ctk.CTkFont(size=14))
         self.giris.pack(side="left", fill="x", expand=True)
         self.giris.bind("<Return>", lambda e: self._siraya_ekle())
-        ctk.CTkButton(giris_cerceve, text="＋ Sıraya Ekle", width=130, height=40,
+        ctk.CTkButton(giris_cerceve, text=T("siraya_ekle"), width=130, height=40,
                       command=self._siraya_ekle).pack(side="left", padx=(8, 0))
 
         # Sira (kuyruk)
         sira_ust = ctk.CTkFrame(self, fg_color="transparent")
         sira_ust.pack(fill="x", padx=20, pady=(8, 0))
-        ctk.CTkLabel(sira_ust, text="İndirme Sırası",
+        ctk.CTkLabel(sira_ust, text=T("indirme_sirasi"),
                      font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
-        ctk.CTkButton(sira_ust, text="Temizle", width=70, height=26,
+        ctk.CTkButton(sira_ust, text=T("temizle"), width=70, height=26,
                       fg_color="gray30", hover_color="gray20",
                       command=self._sirayi_temizle).pack(side="right")
 
@@ -434,7 +539,7 @@ class Uygulama(ctk.CTk):
         self.sira_listesi = []
 
         # Baslat butonu
-        self.baslat_btn = ctk.CTkButton(self, text="▼  İNDİRMEYİ BAŞLAT",
+        self.baslat_btn = ctk.CTkButton(self, text=T("baslat"),
                                         height=46, font=ctk.CTkFont(size=16, weight="bold"),
                                         command=self._baslat)
         self.baslat_btn.pack(fill="x", padx=20, pady=6)
@@ -445,20 +550,21 @@ class Uygulama(ctk.CTk):
         self.ilerleme_bar.set(0)
 
         # Log
-        ctk.CTkLabel(self, text="Durum",
+        ctk.CTkLabel(self, text=T("durum"),
                      font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=20, pady=(6, 0))
         self.log_kutu = ctk.CTkTextbox(self, font=ctk.CTkFont(size=12), wrap="word")
         self.log_kutu.pack(fill="both", expand=True, padx=20, pady=(2, 16))
         self.log_kutu.configure(state="disabled")
 
         if not ffmpeg_bul():
-            self._log("⚠ ffmpeg.exe bulunamadı — MP3 dönüşümü çalışmayabilir.")
+            self._log(T("ffmpeg_yok"))
 
     def _mod_degisti(self):
+        n = self.ayar.get('sarki_sayisi', 100)
         if self.mod.get() == "sanatci":
-            self.giris.configure(placeholder_text="Örn: Tarkan   (en iyi 100 orijinal iner)")
+            self.giris.configure(placeholder_text=T("ipucu_sanatci", n=n))
         else:
-            self.giris.configure(placeholder_text="Örn: Tarkan Kuzu Kuzu   (tek şarkı)")
+            self.giris.configure(placeholder_text=T("ipucu_parca"))
 
     def _siraya_ekle(self):
         metin = self.giris.get().strip()
@@ -476,7 +582,7 @@ class Uygulama(ctk.CTk):
         self.sira_kutu.configure(state="normal")
         self.sira_kutu.delete("1.0", "end")
         for i, (mod, deger) in enumerate(self.sira_listesi, 1):
-            etiket = "🎤 Sanatçı" if mod == "sanatci" else "🎵 Parça"
+            etiket = T("etiket_sanatci") if mod == "sanatci" else T("etiket_parca")
             self.sira_kutu.insert("end", f"{i}. [{etiket}]  {deger}\n")
         self.sira_kutu.configure(state="disabled")
 
@@ -515,10 +621,10 @@ class Uygulama(ctk.CTk):
         if self.giris.get().strip():
             self._siraya_ekle()
         if not self.sira_listesi:
-            self._log("Önce sıraya en az bir şey ekle.")
+            self._log(T("once_ekle"))
             return
         self.calisiyor = True
-        self.baslat_btn.configure(state="disabled", text="İNDİRİLİYOR...")
+        self.baslat_btn.configure(state="disabled", text=T("indiriliyor"))
         gorevler = list(self.sira_listesi)
         threading.Thread(target=self._calis, args=(gorevler,), daemon=True).start()
 
@@ -536,7 +642,7 @@ class Uygulama(ctk.CTk):
                 ind.parca_indir(deger)
         ilerleme(1.0)
         kayit_yeri = os.path.join(uygulama_klasoru(), "music")
-        log(f"\n✅ HEPSİ BİTTİ!\n📁 Konum: {kayit_yeri}")
+        log(T("hepsi_bitti", yol=kayit_yeri))
         self.mesaj_kuyrugu.put(("bitti", None))
 
     def _guncelleme_kontrol_arka(self):
@@ -546,31 +652,30 @@ class Uygulama(ctk.CTk):
             self.mesaj_kuyrugu.put(("guncelleme", uzak))
 
     def _bildirimi_goster(self, uzak):
-        self.bildirim_btn.configure(
-            text=f"🔔  Güncelleme mevcut: v{uzak}  —  yüklemek için tıkla")
+        self.bildirim_btn.configure(text=T("bildirim", v=uzak))
         self.bildirim_serit.pack(fill="x", side="top", before=self._ust_cerceve)
 
     def _ayarlari_ac(self):
         pencere = ctk.CTkToplevel(self)
-        pencere.title("Ayarlar")
-        pencere.geometry("460x580")
+        pencere.title(T("ayarlar").replace("⚙  ", ""))
+        pencere.geometry("470x660")
         pencere.transient(self)
         try:
             pencere.after(200, lambda: pencere.iconbitmap(kaynak_yolu("logo.ico")))
         except Exception:
             pass
 
-        ctk.CTkLabel(pencere, text="⚙  Ayarlar",
+        ctk.CTkLabel(pencere, text=T("ayarlar"),
                      font=ctk.CTkFont(size=20, weight="bold")).pack(anchor="w", padx=20, pady=(18, 10))
 
         # Surum bilgisi
         kutu = ctk.CTkFrame(pencere)
         kutu.pack(fill="x", padx=20, pady=8)
-        ctk.CTkLabel(kutu, text=f"Yüklü sürüm:  v{SURUM}",
+        ctk.CTkLabel(kutu, text=T("yuklu_surum", v=SURUM),
                      font=ctk.CTkFont(size=14)).pack(anchor="w", padx=14, pady=(12, 2))
 
         if self.uzak_surum and _surum_yeni_mi(self.uzak_surum, SURUM):
-            durum = ctk.CTkLabel(kutu, text=f"🔔 Yeni sürüm var: v{self.uzak_surum}",
+            durum = ctk.CTkLabel(kutu, text=T("yeni_var", v=self.uzak_surum),
                                  font=ctk.CTkFont(size=14, weight="bold"),
                                  text_color="#4caf50")
             durum.pack(anchor="w", padx=14, pady=2)
@@ -580,8 +685,8 @@ class Uygulama(ctk.CTk):
             ilerleme_lbl.pack(anchor="w", padx=14, pady=(4, 2))
 
             def indir():
-                indir_btn.configure(state="disabled", text="İndiriliyor...")
-                ilerleme_lbl.configure(text="Güncelleme çekiliyor, bekle...")
+                indir_btn.configure(state="disabled", text=T("cekiliyor").replace("...", ""))
+                ilerleme_lbl.configure(text=T("cekiliyor"))
                 def isle():
                     ok, mesaj = guncellemeyi_indir()
                     def bitir():
@@ -589,24 +694,24 @@ class Uygulama(ctk.CTk):
                             text=mesaj,
                             text_color="#4caf50" if ok else "#e05555")
                         if ok:
-                            indir_btn.configure(text="✓ İndirildi — yeniden başlat")
+                            indir_btn.configure(text=T("indirildi_yeniden"))
                         else:
-                            indir_btn.configure(state="normal", text="Tekrar dene")
+                            indir_btn.configure(state="normal", text=T("tekrar_dene"))
                     self.after(0, bitir)
                 threading.Thread(target=isle, daemon=True).start()
 
-            indir_btn = ctk.CTkButton(kutu, text="⬇  İndir ve Kur", command=indir)
+            indir_btn = ctk.CTkButton(kutu, text=T("indir_kur"), command=indir)
             indir_btn.pack(anchor="w", padx=14, pady=(6, 14))
         else:
-            ctk.CTkLabel(kutu, text="En güncel sürümü kullanıyorsun ✓",
+            ctk.CTkLabel(kutu, text=T("guncel_kullaniyorsun"),
                          font=ctk.CTkFont(size=13), text_color="gray").pack(anchor="w", padx=14, pady=(2, 12))
 
             def tekrar_kontrol():
-                kontrol_btn.configure(state="disabled", text="Kontrol ediliyor...")
+                kontrol_btn.configure(state="disabled", text=T("kontrol_ediliyor"))
                 def isle():
                     uzak, yeni = guncelleme_kontrol()
                     def bitir():
-                        kontrol_btn.configure(state="normal", text="Güncellemeleri Denetle")
+                        kontrol_btn.configure(state="normal", text=T("denetle"))
                         if yeni:
                             self.uzak_surum = uzak
                             pencere.destroy()
@@ -615,37 +720,62 @@ class Uygulama(ctk.CTk):
                     self.after(0, bitir)
                 threading.Thread(target=isle, daemon=True).start()
 
-            kontrol_btn = ctk.CTkButton(kutu, text="Güncellemeleri Denetle",
+            kontrol_btn = ctk.CTkButton(kutu, text=T("denetle"),
                                         command=tekrar_kontrol)
             kontrol_btn.pack(anchor="w", padx=14, pady=(0, 14))
 
-        # --- Tercihler: tema + sarki sayisi ---
+        # --- Tercihler: dil + tema + sarki sayisi ---
         tercih = ctk.CTkFrame(pencere)
         tercih.pack(fill="x", padx=20, pady=8)
 
-        # Tema
-        tema_satir = ctk.CTkFrame(tercih, fg_color="transparent")
-        tema_satir.pack(fill="x", padx=14, pady=(12, 6))
-        ctk.CTkLabel(tema_satir, text="Tema:",
+        # Dil
+        dil_satir = ctk.CTkFrame(tercih, fg_color="transparent")
+        dil_satir.pack(fill="x", padx=14, pady=(12, 6))
+        ctk.CTkLabel(dil_satir, text=T("dil_lbl"),
                      font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
 
+        def dil_degistir(secim):
+            global _AKTIF_DIL
+            yeni = "tr" if secim.startswith("Türkçe") else "en"
+            if yeni == _AKTIF_DIL:
+                return
+            _AKTIF_DIL = yeni
+            self.ayar["dil"] = yeni
+            ayar_kaydet(self.ayar)
+            # Arayuzu yeniden kur
+            pencere.destroy()
+            self._arayuzu_yenile()
+
+        dil_menu = ctk.CTkOptionMenu(dil_satir, values=["Türkçe", "English"],
+                                     width=120, command=dil_degistir)
+        dil_menu.set("Türkçe" if _AKTIF_DIL == "tr" else "English")
+        dil_menu.pack(side="right")
+
+        # Tema
+        tema_satir = ctk.CTkFrame(tercih, fg_color="transparent")
+        tema_satir.pack(fill="x", padx=14, pady=(6, 6))
+        ctk.CTkLabel(tema_satir, text=T("tema_lbl"),
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+
+        tema_secenek = [T("tema_koyu"), T("tema_acik"), T("tema_sistem")]
+        tema_kod = {T("tema_koyu"): "dark", T("tema_acik"): "light", T("tema_sistem"): "system"}
+        tema_ters = {"dark": T("tema_koyu"), "light": T("tema_acik"), "system": T("tema_sistem")}
+
         def tema_degistir(secim):
-            harita = {"Koyu": "dark", "Açık": "light", "Sistem": "system"}
-            deger = harita.get(secim, "dark")
+            deger = tema_kod.get(secim, "dark")
             ctk.set_appearance_mode(deger)
             self.ayar["tema"] = deger
             ayar_kaydet(self.ayar)
 
-        ters_harita = {"dark": "Koyu", "light": "Açık", "system": "Sistem"}
-        tema_menu = ctk.CTkOptionMenu(tema_satir, values=["Koyu", "Açık", "Sistem"],
+        tema_menu = ctk.CTkOptionMenu(tema_satir, values=tema_secenek,
                                       width=120, command=tema_degistir)
-        tema_menu.set(ters_harita.get(self.ayar.get("tema", "dark"), "Koyu"))
+        tema_menu.set(tema_ters.get(self.ayar.get("tema", "dark"), T("tema_koyu")))
         tema_menu.pack(side="right")
 
-        # Sarki sayisi (sadece sanatci modu)
+        # Sarki sayisi
         sayi_satir = ctk.CTkFrame(tercih, fg_color="transparent")
         sayi_satir.pack(fill="x", padx=14, pady=(6, 4))
-        ctk.CTkLabel(sayi_satir, text="Sanatçı başına şarkı:",
+        ctk.CTkLabel(sayi_satir, text=T("sarki_lbl"),
                      font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
         self._sayi_deger_lbl = ctk.CTkLabel(sayi_satir,
                                             text=str(self.ayar.get("sarki_sayisi", 100)),
@@ -654,14 +784,14 @@ class Uygulama(ctk.CTk):
         self._sayi_deger_lbl.pack(side="right")
 
         def sayi_degisti(v):
-            deger = int(round(v / 10) * 10)  # 10'un katlarina yuvarla
+            deger = int(round(v / 10) * 10)
             if deger < 10:
                 deger = 10
             self._sayi_deger_lbl.configure(text=str(deger))
             self.ayar["sarki_sayisi"] = deger
             ayar_kaydet(self.ayar)
             try:
-                self.sanatci_radio.configure(text=f"Sanatçının en iyileri ({deger})")
+                self.sanatci_radio.configure(text=T("mod_sanatci", n=deger))
                 self._mod_degisti()
             except Exception:
                 pass
@@ -670,26 +800,39 @@ class Uygulama(ctk.CTk):
                                   command=sayi_degisti)
         kaydirici.set(self.ayar.get("sarki_sayisi", 100))
         kaydirici.pack(fill="x", padx=14, pady=(0, 4))
-        ctk.CTkLabel(tercih, text="10 – 200 arası",
+        ctk.CTkLabel(tercih, text=T("sarki_aralik"),
                      font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w", padx=14, pady=(0, 12))
 
         # Cikti klasoru
         alt = ctk.CTkFrame(pencere)
         alt.pack(fill="x", padx=20, pady=8)
         yol = os.path.join(uygulama_klasoru(), "music")
-        ctk.CTkLabel(alt, text="İndirme konumu:", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=14, pady=(12, 0))
-        ctk.CTkLabel(alt, text=yol, font=ctk.CTkFont(size=11), text_color="gray", wraplength=380).pack(anchor="w", padx=14, pady=(0, 6))
+        ctk.CTkLabel(alt, text=T("konum_lbl"), font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=14, pady=(12, 0))
+        ctk.CTkLabel(alt, text=yol, font=ctk.CTkFont(size=11), text_color="gray", wraplength=390).pack(anchor="w", padx=14, pady=(0, 6))
 
         def klasoru_ac():
             try:
+                os.makedirs(yol, exist_ok=True)
                 os.startfile(yol)
             except Exception:
                 pass
-        ctk.CTkButton(alt, text="📁 Klasörü Aç", width=120, command=klasoru_ac).pack(anchor="w", padx=14, pady=(0, 14))
+        ctk.CTkButton(alt, text=T("klasoru_ac"), width=120, command=klasoru_ac).pack(anchor="w", padx=14, pady=(0, 14))
+
+    def _arayuzu_yenile(self):
+        # Dil degisince tum widget'lari silip arayuzu yeniden kur
+        eski_sira = list(self.sira_listesi)
+        for w in self.winfo_children():
+            w.destroy()
+        self._arayuz_kur()
+        self.sira_listesi = eski_sira
+        self._sirayi_ciz()
+        # guncelleme bildirimi hala gecerliyse tekrar goster
+        if self.uzak_surum and _surum_yeni_mi(self.uzak_surum, SURUM):
+            self._bildirimi_goster(self.uzak_surum)
 
     def _bitti(self):
         self.calisiyor = False
-        self.baslat_btn.configure(state="normal", text="▼  İNDİRMEYİ BAŞLAT")
+        self.baslat_btn.configure(state="normal", text=T("baslat"))
         self.sira_listesi.clear()
         self._sirayi_ciz()
 
