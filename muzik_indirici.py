@@ -9,11 +9,27 @@ import urllib.request
 import customtkinter as ctk
 import yt_dlp
 
+try:
+    import spotipy
+    from spotipy.oauth2 import SpotifyClientCredentials
+    SPOTIPY_VAR = True
+except Exception:
+    SPOTIPY_VAR = False
+
+try:
+    from spotify_scraper import SpotifyClient as _SpotifyScraper
+    SCRAPER_VAR = True
+except Exception:
+    SCRAPER_VAR = False
+
+# Spotify ozelligi ikisinden biriyle calisir
+SPOTIFY_VAR = SPOTIPY_VAR or SCRAPER_VAR
+
 
 # ============================================================
 #   SURUM & GUNCELLEME AYARLARI
 # ============================================================
-SURUM = "1.1"
+SURUM = "1.3"
 
 # --- BURAYI KENDI GITHUB BILGILERINLE DOLDUR ---
 GH_KULLANICI = "MuammerGrG"           # github kullanici adin
@@ -29,7 +45,9 @@ def _ham_url(dosya):
 # ============================================================
 #   AYAR KAYDETME (tema, sarki sayisi, dil)
 # ============================================================
-VARSAYILAN_AYAR = {"tema": "dark", "sarki_sayisi": 100, "dil": "tr"}
+VARSAYILAN_AYAR = {"tema": "dark", "sarki_sayisi": 100, "dil": "tr",
+                   "spotify_id": "", "spotify_secret": "",
+                   "kalite": "320", "ulke": "TR"}
 
 
 # ============================================================
@@ -81,6 +99,26 @@ METIN = {
         "dil_lbl": "Dil / Language:",
         "konum_lbl": "İndirme konumu:",
         "klasoru_ac": "📁 Klasörü Aç",
+        # spotify
+        "mod_spotify": "🎧 Spotify listesi",
+        "ipucu_spotify": "Spotify playlist/albüm linkini yapıştır",
+        "spotify_baslik": "Spotify API (isteğe bağlı — daha güvenilir)",
+        "spotify_id_ph": "Client ID",
+        "spotify_secret_ph": "Client Secret",
+        "spotify_nasil": "Boş bırakabilirsin; link doğrudan da okunmaya çalışılır",
+        "spotify_okunuyor": "\n🎧 Spotify listesi okunuyor...",
+        "spotify_bulundu": "   {n} şarkı bulundu, sıraya eklendi.",
+        "spotify_hata": "   ! Spotify: {e}",
+        "spotify_yok": "spotipy kurulu değil — Spotify özelliği devre dışı.",
+        "etiket_spotify": "🎧 Spotify",
+        # youtube top + kalite
+        "mod_yttop": "📈 YouTube Top 50",
+        "ipucu_yttop": "Aşağıdaki '▼ İNDİRMEYİ BAŞLAT' ile ülkenin Top 50'sini indir",
+        "yttop_ekle": "📈 YouTube Top 50 → Sıraya Ekle",
+        "yt_top_okunuyor": "\n📈 YouTube Top 50 ({ulke}) indiriliyor...",
+        "etiket_yttop": "📈 YT Top",
+        "kalite_lbl": "Ses kalitesi:",
+        "ulke_lbl": "YouTube Top ülkesi:",
     },
     "en": {
         "altbaslik": "Originals only, MP3 320 kbps",
@@ -125,6 +163,26 @@ METIN = {
         "dil_lbl": "Language / Dil:",
         "konum_lbl": "Download location:",
         "klasoru_ac": "📁 Open Folder",
+        # spotify
+        "mod_spotify": "🎧 Spotify list",
+        "ipucu_spotify": "Paste a Spotify playlist/album link",
+        "spotify_baslik": "Spotify API (optional — more reliable)",
+        "spotify_id_ph": "Client ID",
+        "spotify_secret_ph": "Client Secret",
+        "spotify_nasil": "Can be left empty; the link is tried directly too",
+        "spotify_okunuyor": "\n🎧 Reading Spotify list...",
+        "spotify_bulundu": "   {n} tracks found, added to queue.",
+        "spotify_hata": "   ! Spotify: {e}",
+        "spotify_yok": "spotipy not installed — Spotify feature disabled.",
+        "etiket_spotify": "🎧 Spotify",
+        # youtube top + kalite
+        "mod_yttop": "📈 YouTube Top 50",
+        "ipucu_yttop": "Use '▼ START DOWNLOAD' below to grab the country's Top 50",
+        "yttop_ekle": "📈 YouTube Top 50 → Add to Queue",
+        "yt_top_okunuyor": "\n📈 Downloading YouTube Top 50 ({ulke})...",
+        "etiket_yttop": "📈 YT Top",
+        "kalite_lbl": "Audio quality:",
+        "ulke_lbl": "YouTube Top country:",
     },
 }
 
@@ -194,21 +252,112 @@ def _surum_yeni_mi(uzak, yerel):
         return uzak != yerel
 
 
+def veri_klasoru():
+    """Yazilabilir kalici klasor (guncel kod, ayarlar burada).
+    Program Files yazilamaz oldugu icin kullanici klasorunu kullaniriz."""
+    yol = os.path.join(os.path.expanduser("~"), ".muzikindirici")
+    try:
+        os.makedirs(yol, exist_ok=True)
+    except Exception:
+        yol = os.path.expanduser("~")
+    return yol
+
+
+def _spotify_scraper_oku(link):
+    """API'siz: spotifyscraper ile public playlist/album okur."""
+    if not SCRAPER_VAR:
+        return None, "scraper yok"
+    try:
+        c = _SpotifyScraper()
+        if "album" in link:
+            info = c.get_album(link)
+        else:
+            info = c.get_playlist(link)
+        parcalar = info.get("tracks") or []
+        sarkilar = []
+        for tr in parcalar:
+            ad = tr.get("name")
+            if not ad:
+                continue
+            sanatcilar = tr.get("artists") or []
+            sanatci = sanatcilar[0].get("name") if sanatcilar else ""
+            sarkilar.append(f"{sanatci} - {ad}".strip(" -"))
+        try:
+            c.close()
+        except Exception:
+            pass
+        if sarkilar:
+            return sarkilar, None
+        return None, "bos"
+    except Exception as e:
+        return None, str(e)
+
+
+def _spotify_api_oku(link, client_id, client_secret):
+    """API'li: spotipy ile okur (anahtar gerekir)."""
+    if not SPOTIPY_VAR:
+        return [], "spotipy kurulu değil."
+    if not client_id or not client_secret:
+        return [], "Spotify API bilgileri girilmemiş (Ayarlar)."
+    m = re.search(r'(playlist|album)/([A-Za-z0-9]+)', link)
+    if not m:
+        return [], "Geçerli bir Spotify playlist/albüm linki değil."
+    tur, kimlik = m.group(1), m.group(2)
+    try:
+        yetki = SpotifyClientCredentials(client_id=client_id,
+                                         client_secret=client_secret)
+        sp = spotipy.Spotify(client_credentials_manager=yetki)
+        sarkilar = []
+        if tur == "playlist":
+            sonuc = sp.playlist_items(kimlik, additional_types=["track"])
+        else:
+            sonuc = sp.album_tracks(kimlik)
+        while sonuc:
+            for oge in sonuc["items"]:
+                tr = oge.get("track") if tur == "playlist" else oge
+                if tr and tr.get("name"):
+                    sanatci = tr["artists"][0]["name"] if tr.get("artists") else ""
+                    sarkilar.append(f"{sanatci} - {tr['name']}".strip(" -"))
+            sonuc = sp.next(sonuc) if sonuc.get("next") else None
+        if not sarkilar:
+            return [], "Listede şarkı bulunamadı (özel liste olabilir)."
+        return sarkilar, None
+    except Exception as e:
+        mesaj = str(e)
+        if "invalid_client" in mesaj.lower() or "400" in mesaj:
+            return [], "Spotify API bilgileri hatalı görünüyor (Ayarlar)."
+        return [], f"Spotify hatası: {mesaj}"
+
+
+def spotify_playlist_oku(link, client_id="", client_secret=""):
+    """Spotify playlist/album okur. Once API'siz dener, olmazsa API'ye duser.
+    Doner: (liste, hata_mesaji)."""
+    if not re.search(r'(playlist|album)/[A-Za-z0-9]+', link):
+        return [], "Geçerli bir Spotify playlist/albüm linki değil."
+
+    # 1) API'siz (anahtar gerektirmez)
+    if SCRAPER_VAR:
+        sarkilar, hata = _spotify_scraper_oku(link)
+        if sarkilar:
+            return sarkilar, None
+        # API'siz basarisiz; anahtar varsa API'ye dus
+        if not (SPOTIPY_VAR and client_id and client_secret):
+            # anahtar yoksa API'siz hatayi kullanici dostu ver
+            return [], "Liste okunamadı (API anahtarı girersen daha güvenilir olur)."
+
+    # 2) API'li (anahtar varsa)
+    return _spotify_api_oku(link, client_id, client_secret)
+
+
 def guncellemeyi_indir():
-    """Guncel muzik_indirici.py'yi cekip exe'nin yanina kaydeder.
-    Basari/mesaj doner."""
+    """Guncel muzik_indirici.py'yi cekip yazilabilir veri klasorune kaydeder."""
     try:
         kod_url = _ham_url("muzik_indirici.py")
         with urllib.request.urlopen(kod_url, timeout=15) as r:
             yeni_kod = r.read().decode("utf-8")
         if len(yeni_kod) < 500 or "customtkinter" not in yeni_kod:
             return False, "İndirilen dosya geçersiz görünüyor."
-        # exe'nin yanina yaz (bir sonraki acilista bu calisir)
-        if getattr(sys, 'frozen', False):
-            hedef_dir = os.path.dirname(sys.executable)
-        else:
-            hedef_dir = os.path.dirname(os.path.abspath(__file__))
-        hedef = os.path.join(hedef_dir, "guncel_muzik_indirici.py")
+        hedef = os.path.join(veri_klasoru(), "guncel_muzik_indirici.py")
         with open(hedef, "w", encoding="utf-8") as f:
             f.write(yeni_kod)
         return True, "Güncelleme indirildi. Uygulamayı kapatıp açın."
@@ -359,11 +508,12 @@ def klasoru_temizle(kok_klasor, log):
 #   INDIRME MOTORU
 # ============================================================
 class Indirici:
-    def __init__(self, log_fn, ilerleme_fn):
+    def __init__(self, log_fn, ilerleme_fn, kalite="320"):
         self.log = log_fn
         self.ilerleme = ilerleme_fn
         self.ffmpeg = ffmpeg_bul()
         self.iptal = False
+        self.kalite = kalite
 
     def _ydl_opts(self, hedef_klasor, gorulen, max_indir):
         opts = {
@@ -371,7 +521,7 @@ class Indirici:
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
-                'preferredquality': '320',
+                'preferredquality': self.kalite,
             }],
             'outtmpl': os.path.join(hedef_klasor, '%(title)s.%(ext)s'),
             'ignoreerrors': True,
@@ -433,6 +583,26 @@ class Indirici:
                 ydl.download([arama])
         except yt_dlp.utils.MaxDownloadsReached:
             pass
+        except Exception as e:
+            self.log(T("log_hata", e=e))
+        klasoru_temizle(hedef, self.log)
+
+    def youtube_top_indir(self, ulke, adet=50):
+        """YouTube'un ulke bazli populer muzik listesini indirir."""
+        music_kok = os.path.join(uygulama_klasoru(), "music")
+        hedef = os.path.join(music_kok, f"YouTube_Top_{ulke}")
+        os.makedirs(hedef, exist_ok=True)
+        gorulen = set()
+        self.log(T("yt_top_okunuyor", ulke=ulke))
+        # YouTube'un resmi "music charts" playlisti ulke bazli
+        # Once populer muzik aramasi ile dene (en saglam yontem)
+        arama = f"ytsearch{adet * 2}:top {ulke} songs this week"
+        opts = self._ydl_opts(hedef, gorulen, adet)
+        try:
+            with yt_dlp.YoutubeDL(opts) as ydl:
+                ydl.download([arama])
+        except yt_dlp.utils.MaxDownloadsReached:
+            self.log(T("log_tamam", n=adet))
         except Exception as e:
             self.log(T("log_hata", e=e))
         klasoru_temizle(hedef, self.log)
@@ -512,6 +682,13 @@ class Uygulama(ctk.CTk):
         ctk.CTkRadioButton(mod_cerceve, text=T("mod_parca"),
                            variable=self.mod, value="parca",
                            command=self._mod_degisti).pack(side="left", padx=8, pady=10)
+        if SPOTIFY_VAR:
+            ctk.CTkRadioButton(mod_cerceve, text=T("mod_spotify"),
+                               variable=self.mod, value="spotify",
+                               command=self._mod_degisti).pack(side="left", padx=8, pady=10)
+        ctk.CTkRadioButton(mod_cerceve, text=T("mod_yttop"),
+                           variable=self.mod, value="yttop",
+                           command=self._mod_degisti).pack(side="left", padx=8, pady=10)
 
         # Giris + ekle
         giris_cerceve = ctk.CTkFrame(self, fg_color="transparent")
@@ -558,23 +735,59 @@ class Uygulama(ctk.CTk):
 
         if not ffmpeg_bul():
             self._log(T("ffmpeg_yok"))
+        if not SPOTIFY_VAR:
+            self._log(T("spotify_yok"))
 
     def _mod_degisti(self):
         n = self.ayar.get('sarki_sayisi', 100)
         if self.mod.get() == "sanatci":
             self.giris.configure(placeholder_text=T("ipucu_sanatci", n=n))
+        elif self.mod.get() == "spotify":
+            self.giris.configure(placeholder_text=T("ipucu_spotify"))
+        elif self.mod.get() == "yttop":
+            self.giris.configure(placeholder_text=T("ipucu_yttop"))
         else:
             self.giris.configure(placeholder_text=T("ipucu_parca"))
 
     def _siraya_ekle(self):
+        mod = self.mod.get()
         metin = self.giris.get().strip()
-        if not metin:
+        # yttop disindaki modlar giris ister
+        if not metin and mod != "yttop":
             return
-        # Virgulle birden fazla girilebilir
+        if mod == "yttop":
+            # Giris gerektirmez, ulke ayardan gelir
+            ulke = self.ayar.get("ulke", "TR")
+            self.sira_listesi.append(("yttop", ulke))
+            self.giris.delete(0, "end")
+            self._sirayi_ciz()
+            return
+        if mod == "spotify":
+            # Spotify linkini arka planda oku, sarkilari parca olarak ekle
+            self.giris.delete(0, "end")
+            self._log(T("spotify_okunuyor"))
+            link = metin
+            def isle():
+                sarkilar, hata = spotify_playlist_oku(
+                    link,
+                    self.ayar.get("spotify_id", ""),
+                    self.ayar.get("spotify_secret", ""))
+                def bitir():
+                    if hata:
+                        self._log(T("spotify_hata", e=hata))
+                    else:
+                        for s in sarkilar:
+                            self.sira_listesi.append(("parca", s))
+                        self._log(T("spotify_bulundu", n=len(sarkilar)))
+                        self._sirayi_ciz()
+                self.after(0, bitir)
+            threading.Thread(target=isle, daemon=True).start()
+            return
+        # Sanatci / parca: virgulle birden fazla
         for parca in metin.split(','):
             parca = parca.strip()
             if parca:
-                self.sira_listesi.append((self.mod.get(), parca))
+                self.sira_listesi.append((mod, parca))
         self.giris.delete(0, "end")
         self._sirayi_ciz()
 
@@ -582,7 +795,12 @@ class Uygulama(ctk.CTk):
         self.sira_kutu.configure(state="normal")
         self.sira_kutu.delete("1.0", "end")
         for i, (mod, deger) in enumerate(self.sira_listesi, 1):
-            etiket = T("etiket_sanatci") if mod == "sanatci" else T("etiket_parca")
+            if mod == "sanatci":
+                etiket = T("etiket_sanatci")
+            elif mod == "yttop":
+                etiket = T("etiket_yttop")
+            else:
+                etiket = T("etiket_parca")
             self.sira_kutu.insert("end", f"{i}. [{etiket}]  {deger}\n")
         self.sira_kutu.configure(state="disabled")
 
@@ -632,12 +850,14 @@ class Uygulama(ctk.CTk):
         def log(m): self.mesaj_kuyrugu.put(("log", m))
         def ilerleme(v): self.mesaj_kuyrugu.put(("ilerleme", v))
 
-        ind = Indirici(log, ilerleme)
+        ind = Indirici(log, ilerleme, kalite=self.ayar.get("kalite", "320"))
         toplam = len(gorevler)
         for i, (mod, deger) in enumerate(gorevler):
             ilerleme(i / toplam)
             if mod == "sanatci":
                 ind.sanatci_indir(deger, self.ayar.get("sarki_sayisi", 100))
+            elif mod == "yttop":
+                ind.youtube_top_indir(deger, 50)
             else:
                 ind.parca_indir(deger)
         ilerleme(1.0)
@@ -658,7 +878,7 @@ class Uygulama(ctk.CTk):
     def _ayarlari_ac(self):
         pencere = ctk.CTkToplevel(self)
         pencere.title(T("ayarlar").replace("⚙  ", ""))
-        pencere.geometry("470x660")
+        pencere.geometry("470x900")
         pencere.transient(self)
         try:
             pencere.after(200, lambda: pencere.iconbitmap(kaynak_yolu("logo.ico")))
@@ -801,7 +1021,67 @@ class Uygulama(ctk.CTk):
         kaydirici.set(self.ayar.get("sarki_sayisi", 100))
         kaydirici.pack(fill="x", padx=14, pady=(0, 4))
         ctk.CTkLabel(tercih, text=T("sarki_aralik"),
-                     font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w", padx=14, pady=(0, 12))
+                     font=ctk.CTkFont(size=11), text_color="gray").pack(anchor="w", padx=14, pady=(0, 8))
+
+        # Ses kalitesi
+        kal_satir = ctk.CTkFrame(tercih, fg_color="transparent")
+        kal_satir.pack(fill="x", padx=14, pady=(4, 6))
+        ctk.CTkLabel(kal_satir, text=T("kalite_lbl"),
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+
+        def kalite_degisti(secim):
+            self.ayar["kalite"] = secim.replace(" kbps", "")
+            ayar_kaydet(self.ayar)
+
+        kal_menu = ctk.CTkOptionMenu(kal_satir,
+                                     values=["128 kbps", "192 kbps", "320 kbps"],
+                                     width=120, command=kalite_degisti)
+        kal_menu.set(f"{self.ayar.get('kalite', '320')} kbps")
+        kal_menu.pack(side="right")
+
+        # YouTube Top ulkesi
+        ulke_satir = ctk.CTkFrame(tercih, fg_color="transparent")
+        ulke_satir.pack(fill="x", padx=14, pady=(4, 12))
+        ctk.CTkLabel(ulke_satir, text=T("ulke_lbl"),
+                     font=ctk.CTkFont(size=13, weight="bold")).pack(side="left")
+
+        ULKELER = {"Türkiye": "TR", "Global": "Global", "ABD": "US",
+                   "Almanya": "DE", "İngiltere": "UK", "Fransa": "FR"}
+        ulke_ters = {v: k for k, v in ULKELER.items()}
+
+        def ulke_degisti(secim):
+            self.ayar["ulke"] = ULKELER.get(secim, "TR")
+            ayar_kaydet(self.ayar)
+
+        ulke_menu = ctk.CTkOptionMenu(ulke_satir, values=list(ULKELER.keys()),
+                                      width=120, command=ulke_degisti)
+        ulke_menu.set(ulke_ters.get(self.ayar.get("ulke", "TR"), "Türkiye"))
+        ulke_menu.pack(side="right")
+
+        # --- Spotify API ---
+        if SPOTIFY_VAR:
+            sp_kutu = ctk.CTkFrame(pencere)
+            sp_kutu.pack(fill="x", padx=20, pady=8)
+            ctk.CTkLabel(sp_kutu, text=T("spotify_baslik"),
+                         font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=14, pady=(12, 2))
+            ctk.CTkLabel(sp_kutu, text=T("spotify_nasil"),
+                         font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w", padx=14, pady=(0, 6))
+
+            sp_id = ctk.CTkEntry(sp_kutu, placeholder_text=T("spotify_id_ph"))
+            sp_id.pack(fill="x", padx=14, pady=3)
+            sp_id.insert(0, self.ayar.get("spotify_id", ""))
+
+            sp_secret = ctk.CTkEntry(sp_kutu, placeholder_text=T("spotify_secret_ph"), show="•")
+            sp_secret.pack(fill="x", padx=14, pady=3)
+            sp_secret.insert(0, self.ayar.get("spotify_secret", ""))
+
+            def sp_kaydet(*_):
+                self.ayar["spotify_id"] = sp_id.get().strip()
+                self.ayar["spotify_secret"] = sp_secret.get().strip()
+                ayar_kaydet(self.ayar)
+            sp_id.bind("<KeyRelease>", sp_kaydet)
+            sp_secret.bind("<KeyRelease>", sp_kaydet)
+            ctk.CTkLabel(sp_kutu, text="", height=4).pack()
 
         # Cikti klasoru
         alt = ctk.CTkFrame(pencere)
@@ -841,9 +1121,7 @@ if __name__ == "__main__":
     # Yaninda indirilmis guncel kod varsa onu calistir (kendini gunceller)
     try:
         if getattr(sys, 'frozen', False):
-            yan_dir = os.path.dirname(sys.executable)
-            guncel = os.path.join(yan_dir, "guncel_muzik_indirici.py")
-            # Sonsuz donguyu onle: bu kodun kendisi zaten guncel dosyaysa atla
+            guncel = os.path.join(veri_klasoru(), "guncel_muzik_indirici.py")
             bu_dosya = os.environ.get("MI_GUNCEL_CALISIYOR")
             if os.path.exists(guncel) and not bu_dosya:
                 import runpy
