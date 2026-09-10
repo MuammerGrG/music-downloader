@@ -7,7 +7,6 @@ import json
 import urllib.request
 
 # Playwright Chromium'u kalici, yazilabilir bir yere kur/ara
-# (Program Files yazilamaz; kullanici klasoru kullaniyoruz)
 _PW_DIR = os.path.join(os.path.expanduser("~"), ".muzikindirici", "browsers")
 os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", _PW_DIR)
 
@@ -15,36 +14,19 @@ import customtkinter as ctk
 import yt_dlp
 
 try:
-    import spotipy
-    from spotipy.oauth2 import SpotifyClientCredentials
-    SPOTIPY_VAR = True
-    _SPOTIPY_HATA = ""
-except Exception as _e:
-    SPOTIPY_VAR = False
-    _SPOTIPY_HATA = str(_e)
-
-try:
-    from spotify_scraper import SpotifyClient as _SpotifyScraper
-    SCRAPER_VAR = True
-    _SCRAPER_HATA = ""
-except Exception as _e:
-    SCRAPER_VAR = False
-    _SCRAPER_HATA = str(_e)
-
-try:
     from playwright.sync_api import sync_playwright
     PLAYWRIGHT_VAR = True
 except Exception:
     PLAYWRIGHT_VAR = False
 
-# Spotify ozelligi bunlardan biriyle calisir
-SPOTIFY_VAR = SPOTIPY_VAR or SCRAPER_VAR or PLAYWRIGHT_VAR
+# Spotify modu her zaman kullanilabilir (tarayici + link cozme)
+SPOTIFY_VAR = True
 
 
 # ============================================================
 #   SURUM & GUNCELLEME AYARLARI
 # ============================================================
-SURUM = "1.6"
+SURUM = "2.1"
 
 # --- BURAYI KENDI GITHUB BILGILERINLE DOLDUR ---
 GH_KULLANICI = "MuammerGrG"           # github kullanici adin
@@ -115,9 +97,19 @@ METIN = {
         "dil_lbl": "Dil / Language:",
         "konum_lbl": "İndirme konumu:",
         "klasoru_ac": "📁 Klasörü Aç",
+        "log_ac": "📄 Log Aç",
         # spotify
         "mod_spotify": "🎧 Spotify listesi",
-        "ipucu_spotify": "Spotify playlist/albüm linkini yapıştır",
+        "sp_yapistir_baslik": "Spotify listesini yapıştır",
+        "sp_yapistir_aciklama": "Spotify'de listeyi aç → şarkıları seç (Ctrl+A) → kopyala (Ctrl+C) → buraya yapıştır. Şarkı isimleri VEYA track linkleri çalışır; linkler otomatik isme çevrilir.",
+        "sp_isleniyor": "İşleniyor...",
+        "sp_cozuluyor": "İşleniyor {i}/{n}...",
+        "sp_durum_liste": "Liste tarayıcıyla okunuyor (ilk sefer tarayıcı inebilir)...",
+        "sp_durum_track": "Şarkılar çözülüyor...",
+        "sp_durum_tarayici": "Tarayıcıyla çözülüyor (biraz sürebilir)...",
+        "sp_bulunamadi": "Bulunamadı: {e}",
+        "sp_yapistir_ekle": "Şarkıları Sıraya Ekle",
+        "ipucu_spotify": "Aşağıdaki 'Sıraya Ekle' ile liste yapıştırma penceresi açılır",
         "kaydet": "Kaydet",
         "kaydedildi": "✓ Kaydedildi",
         "spotify_baslik": "Spotify API (isteğe bağlı — daha güvenilir)",
@@ -183,9 +175,19 @@ METIN = {
         "dil_lbl": "Language / Dil:",
         "konum_lbl": "Download location:",
         "klasoru_ac": "📁 Open Folder",
+        "log_ac": "📄 Open Log",
         # spotify
         "mod_spotify": "🎧 Spotify list",
-        "ipucu_spotify": "Paste a Spotify playlist/album link",
+        "sp_yapistir_baslik": "Paste your Spotify list",
+        "sp_yapistir_aciklama": "In Spotify open the list → select songs (Ctrl+A) → copy (Ctrl+C) → paste here. Song names OR track links both work; links are resolved automatically.",
+        "sp_isleniyor": "Processing...",
+        "sp_cozuluyor": "Processing {i}/{n}...",
+        "sp_durum_liste": "Reading list with browser (may download browser first)...",
+        "sp_durum_track": "Resolving tracks...",
+        "sp_durum_tarayici": "Resolving with browser (may take a while)...",
+        "sp_bulunamadi": "Not found: {e}",
+        "sp_yapistir_ekle": "Add Songs to Queue",
+        "ipucu_spotify": "'Add to Queue' below opens a paste window",
         "kaydet": "Save",
         "kaydedildi": "✓ Saved",
         "spotify_baslik": "Spotify API (optional — more reliable)",
@@ -286,198 +288,319 @@ def veri_klasoru():
     return yol
 
 
-def _spotify_scraper_oku(link):
-    """API'siz: spotifyscraper ile public playlist/album okur."""
-    if not SCRAPER_VAR:
-        return None, "scraper yok"
+def log_yaz(mesaj, hata=None):
+    """Olaylari ve hatalari log dosyasina yazar (sorun teshisi icin)."""
     try:
-        c = _SpotifyScraper()
-        if "album" in link:
-            info = c.get_album(link)
-        else:
-            info = c.get_playlist(link)
-        parcalar = info.get("tracks") or []
-        sarkilar = []
-        for tr in parcalar:
-            ad = tr.get("name")
-            if not ad:
-                continue
-            sanatcilar = tr.get("artists") or []
-            sanatci = sanatcilar[0].get("name") if sanatcilar else ""
-            sarkilar.append(f"{sanatci} - {ad}".strip(" -"))
-        try:
-            c.close()
-        except Exception:
-            pass
-        if sarkilar:
-            return sarkilar, None
-        return None, "bos"
-    except Exception as e:
-        return None, str(e)
+        import datetime, traceback as _tb
+        yol = os.path.join(veri_klasoru(), "log.txt")
+        zaman = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(yol, "a", encoding="utf-8") as f:
+            f.write(f"[{zaman}] {mesaj}\n")
+            if hata is not None:
+                f.write("".join(_tb.format_exception(type(hata), hata, hata.__traceback__)))
+                f.write("\n")
+    except Exception:
+        pass  # log bile yazilamazsa sessiz gec
 
 
-def _spotify_api_oku(link, client_id, client_secret):
-    """API'li: spotipy ile okur (anahtar gerekir)."""
-    if not SPOTIPY_VAR:
-        return [], "spotipy kurulu değil."
-    if not client_id or not client_secret:
-        return [], "Spotify API bilgileri girilmemiş (Ayarlar)."
-    m = re.search(r'(playlist|album)/([A-Za-z0-9]+)', link)
-    if not m:
-        return [], "Geçerli bir Spotify playlist/albüm linki değil."
-    tur, kimlik = m.group(1), m.group(2)
-    try:
-        yetki = SpotifyClientCredentials(client_id=client_id,
-                                         client_secret=client_secret)
-        sp = spotipy.Spotify(client_credentials_manager=yetki)
-        sarkilar = []
-        if tur == "playlist":
-            sonuc = sp.playlist_items(kimlik, additional_types=["track"])
-        else:
-            sonuc = sp.album_tracks(kimlik)
-        while sonuc:
-            for oge in sonuc["items"]:
-                tr = oge.get("track") if tur == "playlist" else oge
-                if tr and tr.get("name"):
-                    sanatci = tr["artists"][0]["name"] if tr.get("artists") else ""
-                    sarkilar.append(f"{sanatci} - {tr['name']}".strip(" -"))
-            sonuc = sp.next(sonuc) if sonuc.get("next") else None
-        if not sarkilar:
-            return [], "Listede şarkı bulunamadı (özel liste olabilir)."
-        return sarkilar, None
-    except Exception as e:
-        mesaj = str(e)
-        if "invalid_client" in mesaj.lower() or "400" in mesaj:
-            return [], "Spotify API bilgileri hatalı görünüyor (Ayarlar)."
-        return [], f"Spotify hatası: {mesaj}"
+def log_yolu():
+    return os.path.join(veri_klasoru(), "log.txt")
 
 
 def chromium_kurulu_mu():
-    """Playwright Chromium binary'si var mi kontrol eder."""
     if not PLAYWRIGHT_VAR:
         return False
     try:
         with sync_playwright() as p:
-            tarayici = p.chromium.launch(headless=True)
-            sayfa = tarayici.new_page(viewport={"width": 1280, "height": 1000})
-            sayfa.goto(link, wait_until="domcontentloaded", timeout=30000)
+            yol = p.chromium.executable_path
+            return bool(yol and os.path.exists(yol))
+    except Exception:
+        return False
+
+
+def chromium_kur(log=None):
+    if not PLAYWRIGHT_VAR:
+        return False, "playwright yok"
+    try:
+        os.makedirs(_PW_DIR, exist_ok=True)
+        if log:
+            log("Tarayıcı bileşeni indiriliyor (ilk sefer, ~150 MB)...")
+        ortam = dict(os.environ)
+        ortam["PLAYWRIGHT_BROWSERS_PATH"] = _PW_DIR
+        if getattr(sys, 'frozen', False):
+            from playwright.__main__ import main as pw_main
+            eski = sys.argv
+            try:
+                sys.argv = ["playwright", "install", "chromium"]
+                pw_main()
+            except SystemExit:
+                pass
+            finally:
+                sys.argv = eski
+        else:
+            import subprocess
+            subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"],
+                           env=ortam, timeout=600)
+        return chromium_kurulu_mu(), "tamam"
+    except Exception as e:
+        return False, str(e)[:100]
+
+
+def _pw_sayfa_ac(p):
+    """Insan gibi gorunen bir tarayici sayfasi acar."""
+    tarayici = p.chromium.launch(headless=True, args=[
+        "--disable-blink-features=AutomationControlled",
+        "--no-sandbox",
+    ])
+    ctx = tarayici.new_context(
+        user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                    "AppleWebKit/537.36 (KHTML, like Gecko) "
+                    "Chrome/122.0 Safari/537.36"),
+        viewport={"width": 1280, "height": 1600},
+        locale="tr-TR",
+    )
+    return tarayici, ctx
+
+
+def _spotify_playlist_playwright(link, ilerleme=None):
+    """Playlist/album sayfasini tarayici ile acar, tum sarkilari kaydirarak okur.
+    Tarayici yarida kapansa bile o ana kadar toplananlari dondurur."""
+    if not PLAYWRIGHT_VAR:
+        return None, "playwright yok"
+    if not chromium_kurulu_mu():
+        ok, _ = chromium_kur()
+        if not ok:
+            return None, "tarayıcı bileşeni kurulamadı"
+
+    toplanan = {}   # blok disinda -> cokse bile korunur
+    hata_mesaji = None
+    try:
+        with sync_playwright() as p:
+            tarayici, ctx = _pw_sayfa_ac(p)
+            sayfa = ctx.new_page()
+            sayfa.set_default_timeout(15000)
+            sayfa.goto(link, wait_until="domcontentloaded", timeout=35000)
             try:
                 sayfa.wait_for_selector('[data-testid="tracklist-row"]', timeout=15000)
             except Exception:
                 pass
             sayfa.wait_for_timeout(1500)
 
-            # Beklenen toplam sayi
             beklenen = 0
             try:
                 govde = sayfa.inner_text("body")
-                m = re.search(r'(\\d[\\d.\\s,]*)\\s*(songs|\u015fark\u0131|sarki|tracks)', govde, re.I)
+                m = re.search(r'(\d[\d.\s,]*)\s*(songs|şarkı|sarki|tracks)', govde, re.I)
                 if m:
-                    beklenen = int(re.sub(r'[.\\s,]', '', m.group(1)))
+                    beklenen = int(re.sub(r'[.\s,]', '', m.group(1)))
             except Exception:
                 pass
 
-            toplanan = {}
-
             def topla():
-                veri = sayfa.evaluate("""() => {
-                    const out = [];
-                    document.querySelectorAll('[data-testid=\"tracklist-row\"]').forEach(el => {
-                        const idx = el.getAttribute('aria-rowindex');
-                        const name = el.querySelector('[data-testid=\"internal-track-link\"]')?.textContent?.trim() || '';
-                        const artist = el.querySelector('a[href*=\"/artist/\"]')?.textContent?.trim() || '';
-                        if (name) out.push({idx: idx, name: name, artist: artist});
-                    });
-                    return out;
-                }""")
-                for o in veri:
-                    try:
-                        anahtar = int(o["idx"]) if o.get("idx") else (900000 + len(toplanan))
-                    except Exception:
-                        anahtar = 900000 + len(toplanan)
-                    toplanan[anahtar] = (o.get("artist","") + " - " + o.get("name","")).strip(" -")
-
-            topla()
-            durgun = 0
-            son = -1
-            for _ in range(600):
-                # DOM'daki son satiri gorunure getir (dogru konteyner kayar)
+                # Sayfa kapandiysa/hata olursa sessizce gec (toplanan korunur)
                 try:
-                    sayfa.evaluate("""() => {
-                        const rows = document.querySelectorAll('[data-testid=\"tracklist-row\"]');
-                        if (rows.length) rows[rows.length-1].scrollIntoView({block:'center'});
+                    veri = sayfa.evaluate("""() => {
+                        const out = [];
+                        document.querySelectorAll('[data-testid="tracklist-row"]').forEach(el => {
+                            const idx = el.getAttribute('aria-rowindex');
+                            const name = el.querySelector('[data-testid="internal-track-link"]')?.textContent?.trim() || '';
+                            const art = el.querySelector('a[href*="/artist/"]')?.textContent?.trim() || '';
+                            if (name) out.push({idx, name, art});
+                        });
+                        return out;
                     }""")
                 except Exception:
-                    pass
-                sayfa.wait_for_timeout(350)
-                topla()
+                    return False
+                for o in veri:
+                    try:
+                        k = int(o["idx"]) if o.get("idx") else 900000 + len(toplanan)
+                    except Exception:
+                        k = 900000 + len(toplanan)
+                    toplanan[k] = (o.get("art", "") + " - " + o.get("name", "")).strip(" -")
+                return True
+
+            topla()
+            durgun, son = 0, -1
+            for tur in range(1500):
+                try:
+                    sayfa.evaluate("""() => {
+                        const r = document.querySelectorAll('[data-testid="tracklist-row"]');
+                        if (r.length) {
+                            r[r.length-1].scrollIntoView({block:'end'});
+                            const main = document.querySelector('[data-overlayscrollbars-viewport], .main-view-container__scroll-node, [data-testid="playlist-tracklist"]');
+                            if (main && main.scrollBy) main.scrollBy(0, 2000);
+                        }
+                    }""")
+                except Exception:
+                    # sayfa kapandi/koptu -> topladigimizla yetin
+                    break
+                try:
+                    sayfa.wait_for_timeout(300 + min(durgun, 6) * 250)
+                except Exception:
+                    break
+                if not topla():
+                    break
                 simdi = len(toplanan)
+                if ilerleme:
+                    ilerleme(simdi, beklenen or simdi)
                 if beklenen and simdi >= beklenen:
                     break
                 if simdi == son:
                     durgun += 1
-                    if durgun >= 12:
+                    esik = 25 if not beklenen else 40
+                    if durgun >= esik:
                         break
                 else:
                     durgun = 0
                 son = simdi
 
-            topla()
-            tarayici.close()
-
-        if toplanan:
-            sirali = [toplanan[k] for k in sorted(toplanan.keys())]
-            gorulen, tekil = set(), []
-            for s in sirali:
-                if s and s.lower() not in gorulen:
-                    gorulen.add(s.lower())
-                    tekil.append(s)
-            return tekil, None
-        return None, "sayfadan okunamadi"
+            try:
+                topla()
+            except Exception:
+                pass
+            try:
+                ctx.close()
+                tarayici.close()
+            except Exception:
+                pass
     except Exception as e:
-        return None, str(e)[:100]
+        hata_mesaji = str(e)[:120]
+
+    if toplanan:
+        sirali = [toplanan[k] for k in sorted(toplanan.keys())]
+        gorulen, tekil = set(), []
+        for s in sirali:
+            if s and s.lower() not in gorulen:
+                gorulen.add(s.lower())
+                tekil.append(s)
+        return tekil, None
+    return None, (hata_mesaji or "sayfadan okunamadı")
 
 
-def spotify_playlist_oku(link, client_id="", client_secret=""):
-    """Spotify playlist/album okur. Once API'siz dener, olmazsa API'ye duser.
-    Doner: (liste, hata_mesaji)."""
-    m = re.search(r'(playlist|album)/([A-Za-z0-9]+)', link)
-    if not m:
-        return [], "Geçerli bir Spotify playlist/albüm linki değil."
-    kimlik = m.group(2)
-    # 37i9... = Spotify'in editoryel/algoritmik listeleri (Top 50, Discover vb.)
-    # Bunlar API ile okunamaz (401), sadece scraper denenir.
-    editoryel = kimlik.startswith("37i9")
+def _tracks_tarayici_ile(track_ids, ilerleme=None):
+    """Track sayfalarini tek tarayici oturumunda acip basliklari ceker."""
+    if not PLAYWRIGHT_VAR:
+        return []
+    if not chromium_kurulu_mu():
+        ok, _ = chromium_kur()
+        if not ok:
+            return []
+    adlar = []
+    try:
+        with sync_playwright() as p:
+            tarayici, ctx = _pw_sayfa_ac(p)
+            sayfa = ctx.new_page()
+            for i, tid in enumerate(track_ids):
+                if ilerleme:
+                    ilerleme(i + 1, len(track_ids))
+                try:
+                    sayfa.goto(f"https://open.spotify.com/track/{tid}",
+                               wait_until="domcontentloaded", timeout=25000)
+                    # sayfa basligi: "Sarki - song and lyrics by Sanatci | Spotify"
+                    baslik = sayfa.title()
+                    m = re.match(r'(.+?)\s*[-–]\s*song(?:\s+and\s+lyrics)?\s+by\s+(.+?)\s*\|', baslik, re.I)
+                    if m:
+                        adlar.append(f"{m.group(2).strip()} - {m.group(1).strip()}")
+                    else:
+                        temiz = re.sub(r'\s*\|\s*Spotify.*$', '', baslik).strip()
+                        if temiz and temiz.lower() != "spotify":
+                            adlar.append(temiz)
+                except Exception:
+                    continue
+            tarayici.close()
+    except Exception:
+        pass
+    return adlar
 
-    # 1) API'siz scraper (hizli, hafif)
-    scraper_hata = ""
-    if SCRAPER_VAR:
-        sarkilar, scraper_hata = _spotify_scraper_oku(link)
-        if sarkilar:
-            return sarkilar, None
 
-    # 2) Tarayici otomasyonu (guclu — API/IP engellerini asar)
-    pw_hata = ""
-    if PLAYWRIGHT_VAR:
-        sarkilar, pw_hata = _spotify_playwright_oku(link)
-        if sarkilar:
-            return sarkilar, None
+def _spotify_track_adi(track_id):
+    """Track ID'sinden 'Sanatci - Sarki' bilgisini anahtarsiz ceker (oEmbed/embed)."""
+    basliklar = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    try:
+        url = f"https://open.spotify.com/oembed?url=https://open.spotify.com/track/{track_id}"
+        req = urllib.request.Request(url, headers=basliklar)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            d = json.load(r)
+        t = d.get("title")
+        if t:
+            return t.strip()
+    except Exception:
+        pass
+    return None
 
-    if editoryel and not (SPOTIPY_VAR and client_id and client_secret):
-        return [], ("Bu Spotify'ın resmi/editöryel listesi (Top 50 gibi) — "
-                    "şu an okunamadı. İpucu: 'YouTube Top 50' modunu kullan "
-                    "ya da kendi çalma listeni yapıştır.")
 
-    # 3) API (son care, anahtar varsa ve editoryel degilse)
-    if SPOTIPY_VAR and client_id and client_secret and not editoryel:
-        sarkilar, api_hata = _spotify_api_oku(link, client_id, client_secret)
-        if sarkilar:
-            return sarkilar, None
-        return [], api_hata
+def spotify_listesi_ayristir(metin, ilerleme=None, durum=None):
+    """Yapistirilan metni sarki listesine cevirir.
+    - Playlist/album linki -> tarayici ile tum liste okunur.
+    - Track linkleri -> oEmbed, olmazsa tarayici ile isme cevrilir.
+    - Duz isimler -> oldugu gibi."""
+    satirlar = [s.strip() for s in metin.splitlines() if s.strip()]
 
-    # hicbiri olmadi
-    detay = pw_hata or scraper_hata or "sebep bilinmiyor"
-    return [], f"Liste okunamadı ({detay[:70]})."
+    # 1) Playlist / album linki var mi? (tek link tum listeyi verir)
+    for s in satirlar:
+        m = re.search(r'open\.spotify\.com/(playlist|album)/[A-Za-z0-9]+', s)
+        if m:
+            if durum:
+                durum("liste")
+            sarkilar, hata = _spotify_playlist_playwright(
+                "https://" + m.group(0), ilerleme)
+            return sarkilar or [], hata
+
+    # 2) Track linkleri
+    track_ids = []
+    duz_isimler = []
+    for s in satirlar:
+        m = re.search(r'open\.spotify\.com/track/([A-Za-z0-9]+)', s)
+        if m:
+            track_ids.append(m.group(1))
+        elif "open.spotify.com/" in s:
+            continue  # episode vs. atla
+        else:
+            duz_isimler.append(s)
+
+    sarkilar = []
+    if track_ids:
+        if durum:
+            durum("track")
+        # Once oEmbed (hizli), basarisiz olanlari tarayici ile topla
+        oembed_basarisiz = []
+        for i, tid in enumerate(track_ids):
+            if ilerleme:
+                ilerleme(i + 1, len(track_ids))
+            ad = _spotify_track_adi(tid)
+            if ad:
+                sarkilar.append(ad)
+            else:
+                oembed_basarisiz.append(tid)
+
+        # oEmbed hic calismadiysa (hepsi basarisiz) tarayiciyla track sayfalarini ac
+        if oembed_basarisiz and len(oembed_basarisiz) == len(track_ids):
+            if durum:
+                durum("track_tarayici")
+            adlar = _tracks_tarayici_ile(oembed_basarisiz, ilerleme)
+            if adlar:
+                sarkilar = adlar
+
+    # 3) Duz isimler (link yoksa)
+    if not track_ids and duz_isimler:
+        cop = {"explicit", "e", "now playing", "shuffle", "download",
+               "downloaded", "more", "save to your library", "add to playlist"}
+        for s in duz_isimler:
+            d = s.lower().strip()
+            if d in cop:
+                continue
+            if re.fullmatch(r'\d{1,2}:\d{2}', d) or re.fullmatch(r'\d+', d):
+                continue
+            s = re.sub(r'^\s*\d+[\.\)]?\s+', '', s)
+            s = s.replace(" • ", " - ")
+            if s.strip():
+                sarkilar.append(s.strip())
+
+    # Ardisik tekrarlari temizle
+    temiz = []
+    for s in sarkilar:
+        if not temiz or temiz[-1].lower() != s.lower():
+            temiz.append(s)
+    return temiz, None
 
 
 def guncellemeyi_indir():
@@ -898,12 +1021,6 @@ class Uygulama(ctk.CTk):
 
         if not ffmpeg_bul():
             self._log(T("ffmpeg_yok"))
-        if not SPOTIFY_VAR:
-            self._log(T("spotify_yok"))
-            if _SCRAPER_HATA:
-                self._log(f"   (scraper: {_SCRAPER_HATA})")
-            if _SPOTIPY_HATA:
-                self._log(f"   (spotipy: {_SPOTIPY_HATA})")
 
     def _mod_degisti(self):
         n = self.ayar.get('sarki_sayisi', 100)
@@ -919,8 +1036,8 @@ class Uygulama(ctk.CTk):
     def _siraya_ekle(self):
         mod = self.mod.get()
         metin = self.giris.get().strip()
-        # yttop disindaki modlar giris ister
-        if not metin and mod != "yttop":
+        # yttop ve spotify giris kutusu istemez
+        if not metin and mod not in ("yttop", "spotify"):
             return
         if mod == "yttop":
             # Giris gerektirmez, ulke ayardan gelir
@@ -930,38 +1047,10 @@ class Uygulama(ctk.CTk):
             self._sirayi_ciz()
             return
         if mod == "spotify":
-            # Spotify linkini arka planda oku, sarkilari parca olarak ekle
-            self.giris.delete(0, "end")
-            self._log(T("spotify_okunuyor"))
-            link = metin
-            def isle():
-                sarkilar, hata = spotify_playlist_oku(
-                    link,
-                    self.ayar.get("spotify_id", ""),
-                    self.ayar.get("spotify_secret", ""))
-                def bitir():
-                    if hata:
-                        self._log(T("spotify_hata", e=hata))
-                    else:
-                        for s in sarkilar:
-                            self.sira_listesi.append(("parca", s))
-                        self._log(T("spotify_bulundu", n=len(sarkilar)))
-                        self._sirayi_ciz()
-                self.after(0, bitir)
-            threading.Thread(target=isle, daemon=True).start()
+            # Spotify listesini yapistirma penceresi ac
+            self._spotify_yapistir_penceresi()
             return
-        # Sanatci / parca moduna Spotify linki yapistirilmis mi?
-        if ("open.spotify.com" in metin or "spotify.com" in metin):
-            if "playlist" in metin or "album" in metin:
-                # Kullanici yanlislikla link yapistirmis; Spotify gibi isle
-                self.mod.set("spotify")
-                self._mod_degisti()
-                self._siraya_ekle()
-                return
-            else:
-                self._log(T("link_uyari"))
-                return
-        # Genel URL kontrolu (http/https) — sanatci/parca adi olamaz
+        # Sanatci / parca moduna link yapistirilmis mi?
         if re.match(r'https?://', metin):
             self._log(T("link_uyari"))
             return
@@ -973,18 +1062,105 @@ class Uygulama(ctk.CTk):
         self.giris.delete(0, "end")
         self._sirayi_ciz()
 
+    def _spotify_yapistir_penceresi(self):
+        pencere = ctk.CTkToplevel(self)
+        pencere.title(T("mod_spotify").replace("🎧 ", ""))
+        pencere.geometry("520x520")
+        pencere.transient(self)
+        try:
+            pencere.after(200, lambda: pencere.iconbitmap(kaynak_yolu("logo.ico")))
+        except Exception:
+            pass
+
+        ctk.CTkLabel(pencere, text=T("sp_yapistir_baslik"),
+                     font=ctk.CTkFont(size=16, weight="bold")).pack(anchor="w", padx=20, pady=(18, 4))
+        ctk.CTkLabel(pencere, text=T("sp_yapistir_aciklama"),
+                     font=ctk.CTkFont(size=11), text_color="gray",
+                     justify="left", wraplength=470).pack(anchor="w", padx=20, pady=(0, 10))
+
+        kutu = ctk.CTkTextbox(pencere, font=ctk.CTkFont(size=12))
+        kutu.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+
+        durum_lbl = ctk.CTkLabel(pencere, text="", font=ctk.CTkFont(size=12),
+                                 text_color="gray")
+        durum_lbl.pack(anchor="w", padx=20, pady=(0, 2))
+
+        ekle_btn = ctk.CTkButton(pencere, text=T("sp_yapistir_ekle"), height=40,
+                                 font=ctk.CTkFont(size=14, weight="bold"))
+        ekle_btn.pack(fill="x", padx=20, pady=(0, 18))
+
+        def ekle():
+            metin = kutu.get("1.0", "end").strip()
+            if not metin:
+                return
+            ekle_btn.configure(state="disabled", text=T("sp_isleniyor"))
+
+            def ilerleme(i, toplam):
+                self.after(0, lambda: durum_lbl.configure(
+                    text=T("sp_cozuluyor", i=i, n=toplam)))
+
+            def durum(asama):
+                mesaj = {"liste": T("sp_durum_liste"),
+                         "track": T("sp_durum_track"),
+                         "track_tarayici": T("sp_durum_tarayici")}.get(asama, "")
+                if mesaj:
+                    self.after(0, lambda: durum_lbl.configure(text=mesaj))
+
+            def isle():
+                try:
+                    sarkilar, hata = spotify_listesi_ayristir(metin, ilerleme, durum)
+                    log_yaz(f"Spotify ayristirma bitti: {len(sarkilar or [])} sarki, hata={hata}")
+                except Exception as e:
+                    log_yaz("Spotify ayristirma COKTU", e)
+                    sarkilar, hata = None, str(e)[:80]
+                def bitir():
+                    try:
+                        if sarkilar:
+                            for s in sarkilar:
+                                self.sira_listesi.append(("parca", s))
+                            self._log(T("spotify_bulundu", n=len(sarkilar)))
+                            self._sirayi_ciz()
+                            pencere.destroy()
+                        else:
+                            durum_lbl.configure(
+                                text=T("sp_bulunamadi", e=(hata or "")[:60]),
+                                text_color="#e05555")
+                            ekle_btn.configure(state="normal", text=T("sp_yapistir_ekle"))
+                    except Exception as e:
+                        log_yaz("Spotify kuyruga aktarma COKTU", e)
+                        try:
+                            durum_lbl.configure(text=T("sp_bulunamadi", e=str(e)[:60]),
+                                                text_color="#e05555")
+                            ekle_btn.configure(state="normal", text=T("sp_yapistir_ekle"))
+                        except Exception:
+                            pass
+                self.after(0, bitir)
+            threading.Thread(target=isle, daemon=True).start()
+
+        ekle_btn.configure(command=ekle)
+
     def _sirayi_ciz(self):
-        self.sira_kutu.configure(state="normal")
-        self.sira_kutu.delete("1.0", "end")
-        for i, (mod, deger) in enumerate(self.sira_listesi, 1):
-            if mod == "sanatci":
-                etiket = T("etiket_sanatci")
-            elif mod == "yttop":
-                etiket = T("etiket_yttop")
-            else:
-                etiket = T("etiket_parca")
-            self.sira_kutu.insert("end", f"{i}. [{etiket}]  {deger}\n")
-        self.sira_kutu.configure(state="disabled")
+        try:
+            self.sira_kutu.configure(state="normal")
+            self.sira_kutu.delete("1.0", "end")
+            satirlar = []
+            for i, (mod, deger) in enumerate(self.sira_listesi, 1):
+                if mod == "sanatci":
+                    etiket = T("etiket_sanatci")
+                elif mod == "yttop":
+                    etiket = T("etiket_yttop")
+                else:
+                    etiket = T("etiket_parca")
+                satirlar.append(f"{i}. [{etiket}]  {deger}")
+            # Tek seferde yaz (200+ satirda tek tek insert arayuzu kilitliyor)
+            self.sira_kutu.insert("1.0", "\n".join(satirlar) + ("\n" if satirlar else ""))
+            self.sira_kutu.configure(state="disabled")
+        except Exception as e:
+            log_yaz(f"_sirayi_ciz hatasi (liste uzunlugu={len(self.sira_listesi)})", e)
+            try:
+                self.sira_kutu.configure(state="disabled")
+            except Exception:
+                pass
 
     def _sirayi_temizle(self):
         if self.calisiyor:
@@ -1032,19 +1208,25 @@ class Uygulama(ctk.CTk):
         def log(m): self.mesaj_kuyrugu.put(("log", m))
         def ilerleme(v): self.mesaj_kuyrugu.put(("ilerleme", v))
 
+        log_yaz(f"Indirme basladi: {len(gorevler)} gorev")
         ind = Indirici(log, ilerleme, kalite=self.ayar.get("kalite", "320"))
         toplam = len(gorevler)
         for i, (mod, deger) in enumerate(gorevler):
             ilerleme(i / toplam)
-            if mod == "sanatci":
-                ind.sanatci_indir(deger, self.ayar.get("sarki_sayisi", 100))
-            elif mod == "yttop":
-                ind.youtube_top_indir(deger, 50)
-            else:
-                ind.parca_indir(deger)
+            try:
+                if mod == "sanatci":
+                    ind.sanatci_indir(deger, self.ayar.get("sarki_sayisi", 100))
+                elif mod == "yttop":
+                    ind.youtube_top_indir(deger, 50)
+                else:
+                    ind.parca_indir(deger)
+            except Exception as e:
+                log_yaz(f"Gorev COKTU: mod={mod}, deger={deger}", e)
+                log(f"   ! atlandı: {deger}")
         ilerleme(1.0)
         kayit_yeri = os.path.join(uygulama_klasoru(), "music")
         log(T("hepsi_bitti", yol=kayit_yeri))
+        log_yaz("Indirme bitti")
         self.mesaj_kuyrugu.put(("bitti", None))
 
     def _guncelleme_kontrol_arka(self):
@@ -1242,37 +1424,6 @@ class Uygulama(ctk.CTk):
         ulke_menu.set(ulke_ters.get(self.ayar.get("ulke", "TR"), "Türkiye"))
         ulke_menu.pack(side="right")
 
-        # --- Spotify API ---
-        if SPOTIFY_VAR:
-            sp_kutu = ctk.CTkFrame(pencere)
-            sp_kutu.pack(fill="x", padx=20, pady=8)
-            ctk.CTkLabel(sp_kutu, text=T("spotify_baslik"),
-                         font=ctk.CTkFont(size=13, weight="bold")).pack(anchor="w", padx=14, pady=(12, 2))
-            ctk.CTkLabel(sp_kutu, text=T("spotify_nasil"),
-                         font=ctk.CTkFont(size=10), text_color="gray").pack(anchor="w", padx=14, pady=(0, 6))
-
-            sp_id = ctk.CTkEntry(sp_kutu, placeholder_text=T("spotify_id_ph"))
-            sp_id.pack(fill="x", padx=14, pady=3)
-            sp_id.insert(0, self.ayar.get("spotify_id", ""))
-
-            sp_secret = ctk.CTkEntry(sp_kutu, placeholder_text=T("spotify_secret_ph"), show="•")
-            sp_secret.pack(fill="x", padx=14, pady=3)
-            sp_secret.insert(0, self.ayar.get("spotify_secret", ""))
-
-            sp_onay = ctk.CTkLabel(sp_kutu, text="", font=ctk.CTkFont(size=11),
-                                   text_color="#4caf50")
-            sp_onay.pack(anchor="w", padx=14, pady=(2, 0))
-
-            def sp_kaydet():
-                self.ayar["spotify_id"] = sp_id.get().strip()
-                self.ayar["spotify_secret"] = sp_secret.get().strip()
-                if ayar_kaydet(self.ayar):
-                    sp_onay.configure(text=T("kaydedildi"))
-                    sp_kutu.after(2500, lambda: sp_onay.configure(text=""))
-
-            ctk.CTkButton(sp_kutu, text=T("kaydet"), width=120,
-                          command=sp_kaydet).pack(anchor="w", padx=14, pady=(6, 12))
-
         # Cikti klasoru
         alt = ctk.CTkFrame(pencere)
         alt.pack(fill="x", padx=20, pady=8)
@@ -1286,7 +1437,23 @@ class Uygulama(ctk.CTk):
                 os.startfile(yol)
             except Exception:
                 pass
-        ctk.CTkButton(alt, text=T("klasoru_ac"), width=120, command=klasoru_ac).pack(anchor="w", padx=14, pady=(0, 14))
+
+        def log_ac():
+            try:
+                lp = log_yolu()
+                if not os.path.exists(lp):
+                    log_yaz("Log dosyasi olusturuldu.")
+                os.startfile(lp)
+            except Exception:
+                pass
+
+        btn_satir = ctk.CTkFrame(alt, fg_color="transparent")
+        btn_satir.pack(anchor="w", fill="x", padx=14, pady=(0, 14))
+        ctk.CTkButton(btn_satir, text=T("klasoru_ac"), width=120,
+                      command=klasoru_ac).pack(side="left")
+        ctk.CTkButton(btn_satir, text=T("log_ac"), width=120,
+                      fg_color="gray30", hover_color="gray20",
+                      command=log_ac).pack(side="left", padx=(8, 0))
 
     def _arayuzu_yenile(self):
         # Dil degisince tum widget'lari silip arayuzu yeniden kur
@@ -1321,5 +1488,9 @@ if __name__ == "__main__":
     except Exception:
         pass  # guncel kod bozuksa gomulu surumle devam et
 
-    app = Uygulama()
-    app.mainloop()
+    try:
+        app = Uygulama()
+        app.mainloop()
+    except Exception as e:
+        log_yaz("UYGULAMA COKTU (mainloop)", e)
+        raise
