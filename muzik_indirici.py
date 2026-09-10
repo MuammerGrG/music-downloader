@@ -13,14 +13,18 @@ try:
     import spotipy
     from spotipy.oauth2 import SpotifyClientCredentials
     SPOTIPY_VAR = True
-except Exception:
+    _SPOTIPY_HATA = ""
+except Exception as _e:
     SPOTIPY_VAR = False
+    _SPOTIPY_HATA = str(_e)
 
 try:
     from spotify_scraper import SpotifyClient as _SpotifyScraper
     SCRAPER_VAR = True
-except Exception:
+    _SCRAPER_HATA = ""
+except Exception as _e:
     SCRAPER_VAR = False
+    _SCRAPER_HATA = str(_e)
 
 # Spotify ozelligi ikisinden biriyle calisir
 SPOTIFY_VAR = SPOTIPY_VAR or SCRAPER_VAR
@@ -29,7 +33,7 @@ SPOTIFY_VAR = SPOTIPY_VAR or SCRAPER_VAR
 # ============================================================
 #   SURUM & GUNCELLEME AYARLARI
 # ============================================================
-SURUM = "1.3"
+SURUM = "1.4"
 
 # --- BURAYI KENDI GITHUB BILGILERINLE DOLDUR ---
 GH_KULLANICI = "MuammerGrG"           # github kullanici adin
@@ -88,7 +92,8 @@ METIN = {
         "guncel_kullaniyorsun": "En güncel sürümü kullanıyorsun ✓",
         "indir_kur": "⬇  İndir ve Kur",
         "cekiliyor": "Güncelleme çekiliyor, bekle...",
-        "indirildi_yeniden": "✓ İndirildi — yeniden başlat",
+        "indirildi_yeniden": "✓ İndirildi",
+        "yeniden_baslatiliyor": "Güncellendi, yeniden başlatılıyor...",
         "tekrar_dene": "Tekrar dene",
         "denetle": "Güncellemeleri Denetle",
         "kontrol_ediliyor": "Kontrol ediliyor...",
@@ -152,7 +157,8 @@ METIN = {
         "guncel_kullaniyorsun": "You're on the latest version ✓",
         "indir_kur": "⬇  Download & Install",
         "cekiliyor": "Fetching update, please wait...",
-        "indirildi_yeniden": "✓ Downloaded — restart the app",
+        "indirildi_yeniden": "✓ Downloaded",
+        "yeniden_baslatiliyor": "Updated, restarting...",
         "tekrar_dene": "Try again",
         "denetle": "Check for Updates",
         "kontrol_ediliyor": "Checking...",
@@ -360,9 +366,24 @@ def guncellemeyi_indir():
         hedef = os.path.join(veri_klasoru(), "guncel_muzik_indirici.py")
         with open(hedef, "w", encoding="utf-8") as f:
             f.write(yeni_kod)
-        return True, "Güncelleme indirildi. Uygulamayı kapatıp açın."
+        return True, "Güncelleme indirildi."
     except Exception as e:
         return False, f"İndirme hatası: {e}"
+
+
+def uygulamayi_yeniden_baslat():
+    """Uygulamayi kapatip yeniden acar (guncel kodla)."""
+    try:
+        if getattr(sys, 'frozen', False):
+            # exe'yi yeniden calistir (bootstrap guncel kodu yukleyecek)
+            os.environ.pop("MI_GUNCEL_CALISIYOR", None)
+            import subprocess
+            subprocess.Popen([sys.executable])
+        else:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+    except Exception:
+        pass
+    os._exit(0)
 
 
 # ============================================================
@@ -737,6 +758,10 @@ class Uygulama(ctk.CTk):
             self._log(T("ffmpeg_yok"))
         if not SPOTIFY_VAR:
             self._log(T("spotify_yok"))
+            if _SCRAPER_HATA:
+                self._log(f"   (scraper: {_SCRAPER_HATA})")
+            if _SPOTIPY_HATA:
+                self._log(f"   (spotipy: {_SPOTIPY_HATA})")
 
     def _mod_degisti(self):
         n = self.ayar.get('sarki_sayisi', 100)
@@ -911,10 +936,12 @@ class Uygulama(ctk.CTk):
                     ok, mesaj = guncellemeyi_indir()
                     def bitir():
                         ilerleme_lbl.configure(
-                            text=mesaj,
+                            text=mesaj if not ok else T("yeniden_baslatiliyor"),
                             text_color="#4caf50" if ok else "#e05555")
                         if ok:
                             indir_btn.configure(text=T("indirildi_yeniden"))
+                            # 1.5 sn sonra otomatik yeniden baslat
+                            self.after(1500, uygulamayi_yeniden_baslat)
                         else:
                             indir_btn.configure(state="normal", text=T("tekrar_dene"))
                     self.after(0, bitir)
